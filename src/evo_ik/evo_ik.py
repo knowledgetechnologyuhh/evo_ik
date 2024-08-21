@@ -15,9 +15,37 @@ from evo_ik.metrics import (
 
 
 class EvoIK:
+    """
+    The EvoIK class provides methods for performing inverse kinematics (IK)
+    using evolutionary algorithms on a robotic kinematic chain described by a URDF.
+
+    Attributes:
+        chain: A kinematic chain object from pytorch_kinematics representing the robot.
+        joint_names: The names of the actuated joints in the kinematic chain.
+        limits: The joint limits of the robot, stored in a PyTorch tensor.
+        num_joints: The number of actuated joints in the kinematic chain.
+        device: The device on which computations will be performed.
+        logging: A flag indicating whether to enable logging of search progress.
+    """
+
     def __init__(
-        self, urdf, end_link_name, root_link_name="", device="cpu", logging=False
-    ):
+        self,
+        urdf: str,
+        end_link_name: str,
+        root_link_name: str = "",
+        device: str = "cpu",
+        logging: bool = False,
+    ) -> None:
+        """
+        Initialize the EvoIK class with a kinematic model from a URDF file.
+
+        Args:
+            urdf (str): The path to the URDF file describing the kinematic chain.
+            end_link_name (str): The name of the end-effector link.
+            root_link_name (str, optional): The name of the root link. Default is "".
+            device (str, optional): The device used for computations ('cpu' or 'cuda'). Default is "cpu".
+            logging (bool, optional): Whether to enable logging. Default is False.
+        """
         self.chain = pk.build_serial_chain_from_urdf(
             open(urdf).read(), end_link_name, root_link_name
         )
@@ -29,8 +57,22 @@ class EvoIK:
         self.logging = logging
 
     def create_problem(
-        self, target_pos, target_quat, orientation_weight=torch.tensor(0.0573)
-    ):
+        self,
+        target_pos: torch.Tensor,
+        target_quat: torch.Tensor,
+        orientation_weight: torch.Tensor = torch.tensor(0.0573),
+    ) -> Problem:
+        """
+        Create an optimization problem for inverse kinematics.
+
+        Args:
+            target_pos (torch.Tensor): The target position of the end-effector.
+            target_quat (torch.Tensor): The target orientation represented as a quaternion.
+            orientation_weight (torch.Tensor, optional): The weight for orientation in the optimization loss. Default is 0.0573.
+
+        Returns:
+            Problem: An evotorch Problem instance representing the inverse kinematics optimization.
+        """
         orientation_weight = orientation_weight.to(self.device)
 
         @vectorized
@@ -54,17 +96,39 @@ class EvoIK:
             device=self.device,
         )
 
-    def forward_kinematics(self, joint_angles):
+    def forward_kinematics(self, joint_angles: torch.Tensor) -> pk.Transform3d:
+        """
+        Perform forward kinematics to get the transformation of the end-effector.
+
+        Args:
+            joint_angles (torch.Tensor): The joint angles for the kinematic chain.
+
+        Returns:
+            Transform3d: The resulting transformation of the end-effector.
+        """
         return self.chain.forward_kinematics(joint_angles.to(self.device))
 
     def check_success(
         self,
-        joint_angles,
-        target_pos,
-        target_quat,
-        dist_acc=0.01,
-        orient_acc=0.349,
-    ):
+        joint_angles: torch.Tensor,
+        target_pos: torch.Tensor,
+        target_quat: torch.Tensor,
+        dist_acc: float = 0.01,
+        orient_acc: float = 0.349,
+    ) -> torch.Tensor:
+        """
+        Check whether the inverse kinematics solution meets the success criteria.
+
+        Args:
+            joint_angles (torch.Tensor): The joint angles to evaluate.
+            target_pos (torch.Tensor): The target position of the end-effector.
+            target_quat (torch.Tensor): The target orientation as a quaternion.
+            dist_acc (float, optional): The maximum allowable position error. Default is 0.01.
+            orient_acc (float, optional): The maximum allowable orientation error. Default is 0.349.
+
+        Returns:
+            torch.Tensor: A tensor indicating success (True) or failure (False) of the IK solution.
+        """
         distance, orientation = self.get_euclidean_errors(
             joint_angles, target_pos, target_quat
         )
@@ -72,7 +136,23 @@ class EvoIK:
             torch.less(distance, dist_acc), torch.less(orientation, orient_acc)
         )
 
-    def get_euclidean_errors(self, joint_angles, target_pos, target_quat):
+    def get_euclidean_errors(
+        self,
+        joint_angles: torch.Tensor,
+        target_pos: torch.Tensor,
+        target_quat: torch.Tensor,
+    ) -> tuple:
+        """
+        Compute the positional and orientation errors relative to target end-effector pose.
+
+        Args:
+            joint_angles (torch.Tensor): The joint angles of the kinematic chain.
+            target_pos (torch.Tensor): The target position.
+            target_quat (torch.Tensor): The target orientation as a quaternion.
+
+        Returns:
+            tuple: A tuple containing the positional error and orientation error.
+        """
         # transfer to euclidean via forward kinematics
         trans = self.forward_kinematics(joint_angles)
         mat = trans.get_matrix()
@@ -86,17 +166,35 @@ class EvoIK:
 
     def inverse_kinematics_from_euler(
         self,
-        target_pos,
-        target_euler,
-        convention="ZYX",
-        initial_joints=None,
-        dist_acc=0.01,
-        orient_acc=0.349,
-        min_steps=20,
-        max_steps=200,
-        step_incr=20,
-        orientation_weight=torch.tensor(0.0573),
-    ):
+        target_pos: torch.Tensor,
+        target_euler: torch.Tensor,
+        convention: str = "ZYX",
+        initial_joints: torch.Tensor = None,
+        dist_acc: float = 0.01,
+        orient_acc: float = 0.349,
+        min_steps: int = 20,
+        max_steps: int = 200,
+        step_incr: int = 20,
+        orientation_weight: torch.Tensor = torch.tensor(0.0573),
+    ) -> torch.Tensor:
+        """
+        Perform inverse kinematics using euler angles for the target orientation.
+
+        Args:
+            target_pos (torch.Tensor): The target position.
+            target_euler (torch.Tensor): The target orientation as Euler angles.
+            convention (str, optional): The convention for Euler angles. Default is "ZYX".
+            initial_joints (torch.Tensor, optional): The initial guess for joint angles. Default is None.
+            dist_acc (float, optional): The distance accuracy for success. Default is 0.01.
+            orient_acc (float, optional): The orientation accuracy for success. Default is 0.349.
+            min_steps (int, optional): Minimum number of optimization steps. Default is 20.
+            max_steps (int, optional): Maximum number of optimization steps. Default is 200.
+            step_incr (int, optional): Increment for steps beyond min_steps if needed. Default is 20.
+            orientation_weight (torch.Tensor, optional): Weight for orientation in the loss. Default is 0.0573.
+
+        Returns:
+            torch.Tensor: The computed joint angles that achieve the target end-effector pose.
+        """
         target_mat = pk.euler_angles_to_matrix(target_euler, convention)
         target_quat = pk.matrix_to_quaternion(target_mat)
         return self.inverse_kinematics(
@@ -113,15 +211,31 @@ class EvoIK:
 
     def inverse_kinematics_from_matrix(
         self,
-        mat,
-        initial_joints=None,
-        dist_acc=0.01,
-        orient_acc=0.349,
-        min_steps=20,
-        max_steps=200,
-        step_incr=20,
-        orientation_weight=torch.tensor(0.0573),
-    ):
+        mat: torch.Tensor,
+        initial_joints: torch.Tensor = None,
+        dist_acc: float = 0.01,
+        orient_acc: float = 0.349,
+        min_steps: int = 20,
+        max_steps: int = 200,
+        step_incr: int = 20,
+        orientation_weight: torch.Tensor = torch.tensor(0.0573),
+    ) -> torch.Tensor:
+        """
+        Perform inverse kinematics using a transformation matrix for the target pose.
+
+        Args:
+            mat (torch.Tensor): A transformation matrix representing the target end-effector pose.
+            initial_joints (torch.Tensor, optional): The initial guess for joint angles. Default is None.
+            dist_acc (float, optional): The distance accuracy for success. Default is 0.01.
+            orient_acc (float, optional): The orientation accuracy for success. Default is 0.349.
+            min_steps (int, optional): Minimum number of optimization steps. Default is 20.
+            max_steps (int, optional): Maximum number of optimization steps. Default is 200.
+            step_incr (int, optional): Increment for steps beyond min_steps if needed. Default is 20.
+            orientation_weight (torch.Tensor, optional): Weight for orientation in the loss. Default is 0.0573.
+
+        Returns:
+            torch.Tensor: The computed joint angles that achieve the target end-effector pose.
+        """
         pos = mat[:3, 3]
         rot = pk.matrix_to_quaternion(mat[:3, :3])
         return self.inverse_kinematics(
@@ -138,16 +252,33 @@ class EvoIK:
 
     def inverse_kinematics(
         self,
-        target_pos,
-        target_quat,
-        initial_joints=None,
-        dist_acc=0.01,
-        orient_acc=0.349,
-        min_steps=20,
-        max_steps=200,
-        step_incr=20,
-        orientation_weight=torch.tensor(0.0573),
-    ):
+        target_pos: torch.Tensor,
+        target_quat: torch.Tensor,
+        initial_joints: torch.Tensor = None,
+        dist_acc: float = 0.01,
+        orient_acc: float = 0.349,
+        min_steps: int = 20,
+        max_steps: int = 200,
+        step_incr: int = 20,
+        orientation_weight: torch.Tensor = torch.tensor(0.0573),
+    ) -> torch.Tensor:
+        """
+        Perform inverse kinematics to find joint angles that match the target pose.
+
+        Args:
+            target_pos (torch.Tensor): The target position.
+            target_quat (torch.Tensor): The target orientation as a quaternion.
+            initial_joints (torch.Tensor, optional): The initial guess for joint angles. Default is None.
+            dist_acc (float, optional): The distance accuracy for success. Default is 0.01.
+            orient_acc (float, optional): The orientation accuracy for success. Default is 0.349.
+            min_steps (int, optional): Minimum number of optimization steps. Default is 20.
+            max_steps (int, optional): Maximum number of optimization steps. Default is 200.
+            step_incr (int, optional): Increment for steps beyond min_steps if needed. Default is 20.
+            orientation_weight (torch.Tensor, optional): Weight for orientation in the loss. Default is 0.0573.
+
+        Returns:
+            torch.Tensor: The computed joint angles that achieve the target end-effector pose.
+        """
         target_pos = target_pos.to(self.device)
         target_quat = target_quat.to(self.device)
         if initial_joints is not None:
@@ -183,6 +314,7 @@ class EvoIK:
             )
             steps += step_incr
         if self.logging:
+            print(f"Solution: {rad_angles}")
             print(f"Success: {success.detach().item()}")
             distance, angle = self.get_euclidean_errors(
                 rad_angles, target_pos, target_quat

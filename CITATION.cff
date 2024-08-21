@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Gäde"
+  given-names: "Connor"
+title: "EvoIK"
+version: 0.0.2 # TODO
+date-released: 2024-08-20 # TODO
+url: "https://github.com/knowledgetechnologyuhh/EvoIK"
+preferred-citation:
+  type: conference-paper
+  authors:
+  - family-names: "G{\\\"a}de"
+    given-names: "Connor"
+  - family-names: "Habekost"
+    given-names: "Jan-Gerrit"
+  - family-names: "Wermter"
+    given-names: "Stefan"
+  booktitle: "2024 International Joint Conference on Neural Networks (IJCNN)"
+  title: "Domain Adaption as Auxiliary Task for Sim-to-Real Transfer in Vision-based Neuro-Robotic Control"
+  year: 2024

@@ -40,7 +40,9 @@ def test_random_pose(ik_solver, sampler):
         dist_acc=0.01,
         orient_acc=0.349,
         max_steps=200,
+        initial_joints=torch.zeros(6),
     )
+    print(joint_angles)
     pos_error, ori_error = ik_solver.get_euclidean_errors(
         joint_angles, target_pos, target_quat
     )
