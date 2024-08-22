@@ -5,7 +5,7 @@ requires = [
 build-backend = "hatchling.build"
 [project]
 name = "evo_ik"
-version = "0.0.3"
+version = "0.1.0"
 authors = [
   { name="Connor Gäde", email="connor.gaede@uni-hamburg.de" },
 ]

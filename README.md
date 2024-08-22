@@ -1,11 +1,11 @@
-# PyTorch Evolutionary Inverse Kinematics Solver
+# EvoIK - PyTorch Evolutionary Inverse Kinematics Solver
 
-Evolutionary inverse kinematics solver combining EvoTorch and PyTorch Robot Kinematics.
+A GPU-accelerated evolutionary inverse kinematics solver for URDF robot models, combining [EvoTorch](https://evotorch.ai/) and [PyTorch Kinematics](https://github.com/UM-ARM-Lab/pytorch_kinematics) to minimize a weighted sum of position and orientation error of the end-effector using CMA-ES.
 
 ## Installation
 
 ```bash
-git clone https://github.com/knowledgetechnologyuhh/EvoIK.git
+git clone https://github.com/knowledgetechnologyuhh/evo_ik.git
 cd evo_ik
 pip install .
 ```
@@ -81,9 +81,11 @@ The `initial_joints` parameter can be used to define start angles. A good practi
 
 ## Known Issues
 
-- The CMAES solver from EvoTorch seems to have numerical stability issues for longer runs with very small errors, occasionaly causing `nan` solutions.
+- The CMAES solver from EvoTorch may experience numerical stability issues, presumably caused during extended runs with very small errors, occasionaly resulting in `nan` solutions.
 
-- In some cases, the solver may get stuck at a local optimum and not find a solution that meets the success criteria, even if the target is reachable.
+- In some cases, CMAES crashes due to a Cholesky decomposition error because of the covariance matrix not being positive-definite.
+
+- The solver might get stuck in a local optimum and not find a solution that meets the success criteria, even if the target is reachable.
 
 ## Citation
 
