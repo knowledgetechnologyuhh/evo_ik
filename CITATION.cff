@@ -16,6 +16,6 @@ preferred-citation:
     given-names: "Jan-Gerrit"
   - family-names: "Wermter"
     given-names: "Stefan"
-  booktitle: "2024 International Joint Conference on Neural Networks (IJCNN)"
+  collection-title: "2024 International Joint Conference on Neural Networks (IJCNN)"
   title: "Domain Adaption as Auxiliary Task for Sim-to-Real Transfer in Vision-based Neuro-Robotic Control"
   year: 2024
